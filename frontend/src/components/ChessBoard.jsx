@@ -9,6 +9,12 @@ import blackBishop from "../assets/Chess_bdt45.svg";
 import blackKnight from "../assets/Chess_ndt45.svg";
 import blackPawn from "../assets/Chess_pdt45.svg";
 
+import whiteKing from "../assets/Chess_klt45.svg";
+import whiteQueen from "../assets/Chess_qlt45.svg";
+import whiteRook from "../assets/Chess_rlt45.svg";
+import whiteBishop from "../assets/Chess_blt45 .svg";
+import whiteKnight from "../assets/Chess_nlt45 .svg";
+import whitePawn from "../assets/Chess_plt45 .svg";
 
 
 export default function ChessBoard() {
@@ -31,7 +37,13 @@ export default function ChessBoard() {
     r: blackRook,
     b: blackBishop,
     n: blackKnight,
-    p: blackPawn
+    p: blackPawn,
+    K: whiteKing,
+    Q: whiteQueen,
+    R: whiteRook,
+    B: whiteBishop,
+    N: whiteKnight,
+    P: whitePawn,
   };
 
   return (
