@@ -26,3 +26,61 @@
 .piece {
   font-size: 48px;
 }
+
+/* Center the board */
+.chessboard {
+  display: grid;
+  grid-template-columns: repeat(8, 70px);
+  grid-template-rows: repeat(8, 70px);
+  width: max-content;
+  margin: 30px auto;
+  border: 3px solid #333;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  border-radius: 4px;
+}
+
+/* Chess.com square colors */
+.square.light {
+  background-color: #EEEED2;   /* Chess.com light */
+}
+
+.square.dark {
+  background-color: #769656;   /* Chess.com dark */
+}
+
+/* Every square */
+.square {
+  width: 70px;
+  height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+/* Highlight valid moves (yellow-green tone) */
+.highlight {
+  box-shadow: inset 0 0 0 4px #BACA44; /* Chess.com highlight */
+  border-radius: 4px;
+}
+
+/* Selected piece (soft yellow glow) */
+.selected {
+  box-shadow: inset 0 0 0 4px #F6F668;
+  border-radius: 4px;
+}
+
+/* Pieces */
+.piece {
+  width: 90%;
+  height: 90%;
+  user-select: none;
+  pointer-events: none; /* ensure clicks go to square */
+}
+
+/* Optional hover (subtle brightness) */
+.square:hover {
+  filter: brightness(1.07);
+}
