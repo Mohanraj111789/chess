@@ -1,23 +1,37 @@
 import "./chessboard.css";
 
+// Import SVG piece icons
+
+import blackKing from "../assets/Chess_kdt45.svg";
+import blackQueen from "../assets/Chess_qdt45.svg";
+import blackRook from "../assets/Chess_rdt45.svg";
+import blackBishop from "../assets/Chess_bdt45.svg";
+import blackKnight from "../assets/Chess_ndt45.svg";
+import blackPawn from "../assets/Chess_pdt45.svg";
+
+
+
 export default function ChessBoard() {
 
-  // Initial board setup
   const initialBoard = [
-    ["r", "n", "b", "q", "k", "b", "n", "r"],  
+    ["r", "n", "b", "q", "k", "b", "n", "r"],
     ["p", "p", "p", "p", "p", "p", "p", "p"],
-    ["", "", "", "", "", "", "", ""],         
     ["", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
     ["", "", "", "", "", "", "", ""],
-    ["P", "P", "P", "P", "P", "P", "P", "P"],  
-    ["R", "N", "B", "Q", "K", "B", "N", "R"],  
+    ["", "", "", "", "", "", "", ""],
+    ["P", "P", "P", "P", "P", "P", "P", "P"],
+    ["R", "N", "B", "Q", "K", "B", "N", "R"],
   ];
 
-  // Unicode chess pieces
-  const pieceIcons = {
-    r: "♜", n: "♞", b: "♝", q: "♛", k: "♚", p: "♟",
-    R: "♖", N: "♘", B: "♗", Q: "♕", K: "♔", P: "♙",
+  const pieceImages = {
+ 
+    k: blackKing,
+    q: blackQueen,
+    r: blackRook,
+    b: blackBishop,
+    n: blackKnight,
+    p: blackPawn
   };
 
   return (
@@ -32,7 +46,11 @@ export default function ChessBoard() {
               className={isDark ? "square dark" : "square light"}
             >
               {piece && (
-                <span className="piece">{pieceIcons[piece]}</span>
+                <img
+                  src={pieceImages[piece]}
+                  alt={piece}
+                  className="piece"
+                />
               )}
             </div>
           );
