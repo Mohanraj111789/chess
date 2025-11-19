@@ -1,7 +1,6 @@
 import { useState } from "react";
 import "./chessboard.css";
 
-// Import SVG icons
 import blackKing from "../assets/Chess_kdt45.svg";
 import blackQueen from "../assets/Chess_qdt45.svg";
 import blackRook from "../assets/Chess_rdt45.svg";
@@ -14,10 +13,11 @@ import whiteQueen from "../assets/Chess_qlt45.svg";
 import whiteRook from "../assets/Chess_rlt45.svg";
 import whiteBishop from "../assets/Chess_blt45 .svg";   
 import whiteKnight from "../assets/Chess_nlt45 .svg";   
-import whitePawn from "../assets/Chess_plt45 .svg";    
+import whitePawn from "../assets/Chess_plt45 .svg";   
 
 
 export default function ChessBoard() {
+
   const initialBoard = [
     ["r", "n", "b", "q", "k", "b", "n", "r"],
     ["p", "p", "p", "p", "p", "p", "p", "p"],
@@ -45,7 +45,11 @@ export default function ChessBoard() {
     P: whitePawn,
   };
 
+  // 📌 Board state + history
+  const [history, setHistory] = useState([initialBoard]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
   const [board, setBoard] = useState(initialBoard);
+
   const [selected, setSelected] = useState(null);
   const [validMoves, setValidMoves] = useState([]);
 
@@ -57,45 +61,39 @@ export default function ChessBoard() {
     const isWhite = piece === piece.toUpperCase();
 
     switch (piece.toLowerCase()) {
-case "p": {
-  const dir = isWhite ? -1 : 1;
 
-  // === 1-step forward ===
-  if (board[row + dir] && board[row + dir][col] === "") {
-    moves.push({ row: row + dir, col });
+      case "p": {
+        const dir = isWhite ? -1 : 1;
 
-    // === 2-step first move ===
-    const startingRow = isWhite ? 6 : 1;
-    if (row === startingRow && board[row + dir * 2][col] === "") {
-      moves.push({ row: row + dir * 2, col });
-    }
-  }
+        // === 1-step forward ===
+        if (board[row + dir] && board[row + dir][col] === "") {
+          moves.push({ row: row + dir, col });
 
-  // === Captures ===
-  // left capture
-  if (
-    board[row + dir] &&
-    board[row + dir][col - 1]
-  ) {
-    const target = board[row + dir][col - 1];
-    if (target !== "" && isWhite !== (target === target.toUpperCase())) {
-      moves.push({ row: row + dir, col: col - 1 });
-    }
-  }
+          // === 2-step first move ===
+          const startingRow = isWhite ? 6 : 1;
+          if (row === startingRow && board[row + dir * 2][col] === "") {
+            moves.push({ row: row + dir * 2, col });
+          }
+        }
 
-  // right capture
-  if (
-    board[row + dir] &&
-    board[row + dir][col + 1]
-  ) {
-    const target = board[row + dir][col + 1];
-    if (target !== "" && isWhite !== (target === target.toUpperCase())) {
-      moves.push({ row: row + dir, col: col + 1 });
-    }
-  }
+        // left capture
+        if (board[row + dir] && board[row + dir][col - 1]) {
+          const target = board[row + dir][col - 1];
+          if (target !== "" && isWhite !== (target === target.toUpperCase())) {
+            moves.push({ row: row + dir, col: col - 1 });
+          }
+        }
 
-  break;
-}
+        // right capture
+        if (board[row + dir] && board[row + dir][col + 1]) {
+          const target = board[row + dir][col + 1];
+          if (target !== "" && isWhite !== (target === target.toUpperCase())) {
+            moves.push({ row: row + dir, col: col + 1 });
+          }
+        }
+
+        break;
+      }
 
       case "k": {
         const dirs = [
@@ -121,26 +119,33 @@ case "p": {
     return moves;
   }
 
+  // ---------- MOVE PIECE + SAVE HISTORY ----------
   function movePiece(sr, sc, dr, dc) {
-    const newBoard = board.map((r) => [...r]);
+    const newBoard = board.map(r => [...r]);
     newBoard[dr][dc] = newBoard[sr][sc];
     newBoard[sr][sc] = "";
+
     setBoard(newBoard);
+
+    // Save move to history
+    const newHistory = history.slice(0, currentMoveIndex + 1);
+    newHistory.push(newBoard);
+    setHistory(newHistory);
+    setCurrentMoveIndex(newHistory.length - 1);
   }
 
+  // ---------- CLICK HANDLER ----------
   function handleSquareClick(row, col) {
     const piece = board[row][col];
 
-    // Select a piece
     if (!selected && piece !== "") {
       setSelected({ row, col });
       setValidMoves(getValidMoves(piece, row, col));
       return;
     }
 
-    // Move the piece
     if (selected) {
-      const valid = validMoves.some((m) => m.row === row && m.col === col);
+      const valid = validMoves.some(m => m.row === row && m.col === col);
 
       if (valid) {
         movePiece(selected.row, selected.col, row, col);
@@ -151,37 +156,67 @@ case "p": {
     }
   }
 
-  // ---------- RENDER UI ----------
-  return (
-    <div className="chessboard">
-      {board.map((row, rowIndex) =>
-        row.map((piece, colIndex) => {
-          const isDark = (rowIndex + colIndex) % 2 === 1;
-          const highlight = validMoves.some(
-            (m) => m.row === rowIndex && m.col === colIndex
-          );
+  // ---------- PREVIOUS / NEXT ----------
+  function goPrev() {
+    if (currentMoveIndex > 0) {
+      setCurrentMoveIndex(currentMoveIndex - 1);
+      setBoard(history[currentMoveIndex - 1]);
+    }
+  }
 
-          return (
-            <div
-              key={rowIndex + "-" + colIndex}
-              className={
-                "square " +
-                (isDark ? "dark" : "light") +
-                (highlight ? " highlight" : "")
-              }
-              onClick={() => handleSquareClick(rowIndex, colIndex)}
-            >
-              {piece && (
-                <img
-                  src={pieceImages[piece]}
-                  alt={piece}
-                  className="piece"
-                />
-              )}
-            </div>
-          );
-        })
-      )}
+  function goNext() {
+    if (currentMoveIndex < history.length - 1) {
+      setCurrentMoveIndex(currentMoveIndex + 1);
+      setBoard(history[currentMoveIndex + 1]);
+    }
+  }
+
+  // ---------- RENDER ----------
+  return (
+    <div>
+      <div className="chessboard">
+        {board.map((row, rowIndex) =>
+          row.map((piece, colIndex) => {
+            const isDark = (rowIndex + colIndex) % 2 === 1;
+            const highlight = validMoves.some(
+              (m) => m.row === rowIndex && m.col === colIndex
+            );
+
+            return (
+              <div
+                key={rowIndex + "-" + colIndex}
+                className={
+                  "square " +
+                  (isDark ? "dark" : "light") +
+                  (highlight ? " highlight" : "")
+                }
+                onClick={() => handleSquareClick(rowIndex, colIndex)}
+              >
+                {piece && (
+                  <img
+                    src={pieceImages[piece]}
+                    alt={piece}
+                    className="piece"
+                  />
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Previous / Next buttons */}
+      <div className="controls">
+        <button onClick={goPrev} disabled={currentMoveIndex === 0}>
+          ⬅ Previous
+        </button>
+        <button
+          onClick={goNext}
+          disabled={currentMoveIndex === history.length - 1}
+        >
+          Next ➡
+        </button>
+      </div>
     </div>
   );
 }
