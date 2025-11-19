@@ -256,7 +256,6 @@ export default function ChessBoard() {
         )}
       </div>
 
-      {/* Move list + controls */}
       <div className="move-list">
         <h3>Moves</h3>
 
