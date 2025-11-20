@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./chessboard.css";
 
-// Import SVG icons (fix filenames / paths as needed)
+// Import SVG icons (adjust paths/filenames if your assets are in a different folder)
 import blackKing from "../assets/Chess_kdt45.svg";
 import blackQueen from "../assets/Chess_qdt45.svg";
 import blackRook from "../assets/Chess_rdt45.svg";
@@ -17,6 +17,7 @@ import whiteKnight from "../assets/Chess_nlt45 .svg";
 import whitePawn from "../assets/Chess_plt45 .svg";
 
 export default function ChessBoard() {
+  // initial board (uppercase = white, lowercase = black)
   const initialBoard = [
     ["r", "n", "b", "q", "k", "b", "n", "r"],
     ["p", "p", "p", "p", "p", "p", "p", "p"],
@@ -44,26 +45,16 @@ export default function ChessBoard() {
     P: whitePawn,
   };
 
-  // history / board state
-  const [history, setHistory] = useState([initialBoard]);
-  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
-  const [board, setBoard] = useState(initialBoard);
+  // helpers
+  const cloneBoard = (b) => b.map((row) => [...row]);
 
-  const [selected, setSelected] = useState(null);
-  const [validMoves, setValidMoves] = useState([]);
-  const [lastMove, setLastMove] = useState(null);
-
-  // moveList stores objects like { white: "e4", black: "e5" }
-  const [moveList, setMoveList] = useState([]);
-
-  // helper: convert row/col to algebraic e.g. (6,4) => "e2"
   function toNotation(row, col) {
     const files = "abcdefgh";
     return files[col] + (8 - row);
   }
 
-  // simple piece letter map for notation (pawn => "")
   function pieceLetter(piece) {
+    if (!piece) return "";
     const p = piece.toUpperCase();
     if (p === "P") return "";
     if (p === "N") return "N";
@@ -74,31 +65,57 @@ export default function ChessBoard() {
     return "";
   }
 
+  // React state
+  const [board, setBoard] = useState(cloneBoard(initialBoard));
+  const [history, setHistory] = useState([cloneBoard(initialBoard)]);
+  const [currentMoveIndex, setCurrentMoveIndex] = useState(0);
+  const [selected, setSelected] = useState(null); // {row, col} or null
+  const [validMoves, setValidMoves] = useState([]); // array of {row, col}
+  const [lastMove, setLastMove] = useState(null); // {sr, sc, dr, dc}
+  const [moveList, setMoveList] = useState([]); // [{ white, black }]
+  const [isWhiteTurn, setIsWhiteTurn] = useState(true); // true = white to move
+
   // ---------- MOVE GENERATION (pawn + king implemented) ----------
+  function inBounds(r, c) {
+    return r >= 0 && r < 8 && c >= 0 && c < 8;
+  }
+
+  function isWhitePiece(piece) {
+    return piece && piece === piece.toUpperCase();
+  }
+
   function getValidMoves(piece, row, col) {
     const moves = [];
     if (!piece) return moves;
-    const isWhite = piece === piece.toUpperCase();
 
-    switch (piece.toLowerCase()) {
+    // Only allow selecting pieces matching the current turn
+    const pieceIsWhite = isWhitePiece(piece);
+    if (pieceIsWhite !== isWhiteTurn) return moves;
+
+    const pLower = piece.toLowerCase();
+
+    switch (pLower) {
       case "p": {
-        const dir = isWhite ? -1 : 1;
+        // pawns move forward; white moves up (-1), black moves down (+1)
+        const dir = pieceIsWhite ? -1 : 1;
+        const oneR = row + dir;
         // 1-step
-        if (board[row + dir] && board[row + dir][col] === "") {
-          moves.push({ row: row + dir, col });
-          // 2-step
-          const startRow = isWhite ? 6 : 1;
-          if (row === startRow && board[row + dir * 2][col] === "") {
-            moves.push({ row: row + dir * 2, col });
+        if (inBounds(oneR, col) && board[oneR][col] === "") {
+          moves.push({ row: oneR, col });
+          // 2-step from start row
+          const startRow = pieceIsWhite ? 6 : 1;
+          const twoR = row + dir * 2;
+          if (row === startRow && inBounds(twoR, col) && board[twoR][col] === "") {
+            moves.push({ row: twoR, col });
           }
         }
         // captures
         for (let dc of [-1, 1]) {
           const nr = row + dir;
           const nc = col + dc;
-          if (board[nr] && board[nr][nc]) {
+          if (inBounds(nr, nc)) {
             const target = board[nr][nc];
-            if (target !== "" && isWhite !== (target === target.toUpperCase())) {
+            if (target !== "" && isWhitePiece(target) !== pieceIsWhite) {
               moves.push({ row: nr, col: nc });
             }
           }
@@ -114,112 +131,140 @@ export default function ChessBoard() {
         for (let [dr, dc] of dirs) {
           const nr = row + dr;
           const nc = col + dc;
-          if (board[nr] && board[nr][nc] !== undefined) {
+          if (inBounds(nr, nc)) {
             const target = board[nr][nc];
-            if (target === "" || isWhite !== (target === target.toUpperCase())) {
+            if (target === "" || isWhitePiece(target) !== pieceIsWhite) {
               moves.push({ row: nr, col: nc });
             }
           }
         }
         break;
       }
+
+      // other pieces not implemented: you can add N, B, R, Q moves later
+      default:
+        break;
     }
     return moves;
   }
 
   // ---------- MOVE PIECE + generate move notation (with capture 'x') ----------
   function movePiece(sr, sc, dr, dc) {
-    // detect capture from current board BEFORE changing it
-    const target = board[dr][dc]; // "" or piece
-    const movedPiece = board[sr][sc];
-    const isWhite = movedPiece === movedPiece.toUpperCase();
+    const newBoard = cloneBoard(board);
+    const movedPiece = newBoard[sr][sc];
+    const target = newBoard[dr][dc]; // maybe ""
 
-    // build notation
+    if (!movedPiece) return;
+
+    const isWhite = isWhitePiece(movedPiece);
+
+    // notation
     const destNotation = toNotation(dr, dc);
     let notation = "";
 
     if (movedPiece.toLowerCase() === "p") {
-      // pawn
       if (target !== "") {
-        // capture: file of source + 'x' + dest
         const files = "abcdefgh";
         notation = files[sc] + "x" + destNotation;
       } else {
-        // plain pawn move
         notation = destNotation;
       }
     } else {
-      // piece move or capture
       const letter = pieceLetter(movedPiece);
       notation = letter + (target !== "" ? "x" : "") + destNotation;
     }
 
-    // apply move on board
-    const newBoard = board.map(r => [...r]);
+    // apply the move
     newBoard[dr][dc] = newBoard[sr][sc];
     newBoard[sr][sc] = "";
+
+    // update state
     setBoard(newBoard);
     setLastMove({ sr, sc, dr, dc });
 
-    // update history
-    const newHistory = history.slice(0, currentMoveIndex + 1);
-    newHistory.push(newBoard);
-    setHistory(newHistory);
-    setCurrentMoveIndex(newHistory.length - 1);
+    // update history and move index
+    setHistory(prev => {
+      const copy = prev.slice(0, currentMoveIndex + 1);
+      copy.push(cloneBoard(newBoard));
+      return copy;
+    });
+    setCurrentMoveIndex(prev => prev + 1);
 
-    // update moveList as pair (white then black)
+    // update move list
     if (isWhite) {
-      // start new pair with white move
       setMoveList(prev => [...prev, { white: notation, black: null }]);
     } else {
-      // fill black move in last pair
       setMoveList(prev => {
-        if (prev.length === 0) {
-          // defensive: if no white move yet, push empty white first
-          return [{ white: null, black: notation }];
-        } else {
-          const copy = prev.map(p => ({ ...p }));
-          copy[copy.length - 1].black = notation;
-          return copy;
-        }
+        if (prev.length === 0) return [{ white: null, black: notation }];
+        const copy = prev.map(p => ({ ...p }));
+        copy[copy.length - 1].black = notation;
+        return copy;
       });
     }
+
+    // flip turn
+    setIsWhiteTurn(prev => !prev);
   }
 
   // ---------- HANDLE CLICK ----------
   function handleSquareClick(row, col) {
     const piece = board[row][col];
 
-    // select piece
-    if (!selected && piece !== "") {
+    // If no selection yet and clicked empty square -> do nothing
+    if (!selected) {
+      if (piece === "") return;
+      // only allow selecting pieces of the current side to move
+      if (isWhitePiece(piece) !== isWhiteTurn) return;
+
       setSelected({ row, col });
       setValidMoves(getValidMoves(piece, row, col));
       return;
     }
 
-    // move if selected
-    if (selected) {
-      const valid = validMoves.some(m => m.row === row && m.col === col);
-      if (valid) {
-        movePiece(selected.row, selected.col, row, col);
-      }
+    // If clicked same square as selected -> deselect
+    if (selected.row === row && selected.col === col) {
       setSelected(null);
       setValidMoves([]);
+      return;
     }
+
+    // If user clicked another own piece -> change selection (allow switching)
+    if (piece !== "" && isWhitePiece(piece) === isWhiteTurn) {
+      setSelected({ row, col });
+      setValidMoves(getValidMoves(piece, row, col));
+      return;
+    }
+
+    // Attempt to move if clicked on one of the valid moves
+    const valid = validMoves.some(m => m.row === row && m.col === col);
+    if (valid) {
+      movePiece(selected.row, selected.col, row, col);
+    }
+
+    // clear selection regardless
+    setSelected(null);
+    setValidMoves([]);
   }
 
   // ---------- NAVIGATION ----------
   function goPrev() {
     if (currentMoveIndex > 0) {
-      setCurrentMoveIndex(currentMoveIndex - 1);
-      setBoard(history[currentMoveIndex - 1]);
+      const newIndex = currentMoveIndex - 1;
+      setCurrentMoveIndex(newIndex);
+      setBoard(cloneBoard(history[newIndex]));
+      // When going back in history, set turn accordingly:
+      // If newIndex is even -> same as initial position (white to move)
+      // initialIndex 0 = white to move. After 1 move (index 1) it's black to move, etc.
+      setIsWhiteTurn(newIndex % 2 === 0);
     }
   }
 
   function goNext() {
     if (currentMoveIndex < history.length - 1) {
-      setCurrentMoveIndex(currentMoveIndex + 1);
-      setBoard(history[currentMoveIndex + 1]);
+      const newIndex = currentMoveIndex + 1;
+      setCurrentMoveIndex(newIndex);
+      setBoard(cloneBoard(history[newIndex]));
+      setIsWhiteTurn(newIndex % 2 === 0);
     }
   }
 
@@ -238,6 +283,8 @@ export default function ChessBoard() {
               ((lastMove.sr === rowIndex && lastMove.sc === colIndex) ||
                (lastMove.dr === rowIndex && lastMove.dc === colIndex));
 
+            const isSelected = selected && selected.row === rowIndex && selected.col === colIndex;
+
             return (
               <div
                 key={`${rowIndex}-${colIndex}`}
@@ -245,24 +292,27 @@ export default function ChessBoard() {
                   "square " +
                   (isDark ? "dark" : "light") +
                   (highlight ? " highlight" : "") +
-                  (isLastMove ? " last-move" : "")
+                  (isLastMove ? " last-move" : "") +
+                  (isSelected ? " selected" : "")
                 }
                 onClick={() => handleSquareClick(rowIndex, colIndex)}
               >
-                {piece && <img src={pieceImages[piece]} alt={piece} className="piece" />}
+                {piece && pieceImages[piece] && (
+                  <img src={pieceImages[piece]} alt={piece} className="piece" />
+                )}
               </div>
             );
           })
         )}
       </div>
 
+      {/* Move list + controls */}
       <div className="move-list">
         <h3>Moves</h3>
 
         <ol>
           {moveList.map((pair, idx) => (
             <li key={idx}>
-              {/* <strong>{idx + 1}.</strong>&nbsp; */}
               <span>{pair.white ?? ""}</span>&nbsp;&nbsp;
               <span>{pair.black ?? ""}</span>
             </li>
@@ -276,6 +326,10 @@ export default function ChessBoard() {
           <button onClick={goNext} disabled={currentMoveIndex === history.length - 1}>
             Next ➡
           </button>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <strong>Turn:</strong> {isWhiteTurn ? "White" : "Black"}
         </div>
       </div>
     </div>

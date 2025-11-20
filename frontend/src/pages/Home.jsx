@@ -1,6 +1,7 @@
 // src/pages/Home.jsx
 import React from "react";
 import ChessBoard from "../components/ChessBoard";
+import Calendar from "../components/calender";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
       </p>
 
       <ChessBoard ></ChessBoard>
+      <Calendar></Calendar>
     </div>
   );
 }
